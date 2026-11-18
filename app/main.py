@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from app.errors import BusinessError, object_payload
-from app.pipeline import run, sample_text
+from app.pipeline import sample_text
 from app import store
 from app.exporter import evidence_csv
 from pathlib import Path
@@ -25,14 +25,14 @@ def home(request:Request): return page(request,1)
 def page(request:Request,module:int):
     if module not in range(1,8): raise BusinessError("MODULE","模块不存在",404)
     ident=request.query_params.get("run_id")
-    item=store.get(ident) if ident else store.save(sample_text(),run(sample_text()))
+    item=store.get(ident) if ident else store.execute(sample_text())
     return templates.TemplateResponse(request=request,name="workbench.html",context={"title":'图书馆合刊拆分与馆藏核验',"modules":MODULES,"active":module,"run":item,"report":item["result"]["reports"][module-1]})
 @app.post("/api/run")
 def calculate(payload:object=Body(default=None)):
     payload=object_payload(payload)
     text=payload.get("text",sample_text())
     if not isinstance(text,str): raise BusinessError("TEXT","输入须为文本")
-    return store.save(text,run(text))
+    return store.execute(text)
 @app.get("/api/runs")
 def list_runs(): return store.history()
 @app.get("/api/runs/{ident}")
